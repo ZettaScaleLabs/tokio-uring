@@ -12,14 +12,7 @@ use tokio_uring::{
 const POOL_SIZE: usize = 2;
 
 fn main() {
-    let args: Vec<_> = env::args().collect();
-
-    let socket_addr = if args.len() <= 1 {
-        "127.0.0.1:0"
-    } else {
-        args[1].as_ref()
-    };
-    let socket_addr: SocketAddr = socket_addr.parse().unwrap();
+    let socket_addr: SocketAddr = "127.0.0.1:10000".parse().unwrap();
 
     tokio_uring::start(accept_loop(socket_addr));
 }
