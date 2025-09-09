@@ -239,7 +239,7 @@ impl Socket {
     ) -> io::Result<Socket> {
         let sys_listener = socket2::Socket::new(domain, socket_type, None)?;
 
-        sys_listener.set_reuse_port(true)?;
+//        sys_listener.set_reuse_port(true)?;
         sys_listener.set_reuse_address(true)?;
 
         // TODO: config for buffer sizes

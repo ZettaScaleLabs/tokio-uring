@@ -1,31 +1,32 @@
 use std::env;
 
-use tokio_uring::net::UnixListener;
+use tokio_uring::net::{TcpListener, UnixListener};
 
 fn main() {
-    let args: Vec<_> = env::args().collect();
-
-    if args.len() <= 1 {
-        panic!("no addr specified");
-    }
-
-    let socket_addr: String = args[1].clone();
-
     tokio_uring::start(async {
-        let listener = UnixListener::bind(&socket_addr).unwrap();
+
+        std::fs::remove_file("/tmp/echo.sock");
+
+        let listener = UnixListener::bind("/tmp/echo.sock").unwrap();
+        //let listener = TcpListener::bind("127.0.0.1:10000".parse().unwrap()).unwrap();
+        const SIZE: usize = 64;
 
         loop {
-            let stream = listener.accept().await.unwrap();
-            let socket_addr = socket_addr.clone();
+            let (stream) = listener.accept().await.unwrap();
             tokio_uring::spawn(async move {
-                let buf = vec![1u8; 128];
+                let mut buf = vec![1u8; SIZE];
 
-                let (result, buf) = stream.write(buf).submit().await;
-                println!("written to {}: {}", &socket_addr, result.unwrap());
+                loop {
+                    let (result, buf2) = stream.read(buf).await;
+                    assert!(result.unwrap() == SIZE);
 
-                let (result, buf) = stream.read(buf).await;
-                let read = result.unwrap();
-                println!("read from {}: {:?}", &socket_addr, &buf[..read]);
+                    let (result, buf3) = stream.write(buf2).submit().await;
+                    assert!(result.unwrap() == SIZE);
+
+                    buf = buf3;
+
+                    //println!("read from {}: {:?}", &socket_addr, &buf[..read]);
+                }
             });
         }
     });

@@ -1,25 +1,32 @@
-use std::env;
+use std::time::Duration;
 
-use tokio_uring::net::UnixStream;
+use tokio::time::Instant;
+use tokio_uring::net::{TcpStream, UnixStream};
 
 fn main() {
-    let args: Vec<_> = env::args().collect();
-
-    if args.len() <= 1 {
-        panic!("no addr specified");
-    }
-
-    let socket_addr: &String = &args[1];
-
     tokio_uring::start(async {
-        let stream = UnixStream::connect(socket_addr).await.unwrap();
-        let buf = vec![1u8; 128];
+        let socket = std::os::unix::net::UnixStream::connect("/tmp/echo.sock").unwrap();
+        let stream = UnixStream::from_std(socket);
+//        let stream = TcpStream::connect("127.0.0.1:10000".parse().unwrap())
+//            .await
+//            .unwrap();
+        const SIZE: usize = 64;
 
-        let (result, buf) = stream.write(buf).submit().await;
-        println!("written: {}", result.unwrap());
+        loop {
+            tokio::time::sleep(Duration::from_millis(100)).await;
+            let to_write = vec![1u8; SIZE];
 
-        let (result, buf) = stream.read(buf).await;
-        let read = result.unwrap();
-        println!("read: {:?}", &buf[..read]);
+            let write_time = Instant::now();
+
+            let (result, buf2) = stream.write_all(to_write).await;
+            result.unwrap();
+
+            let (result, _buf2) = stream.read(buf2).await;            
+            let ts = write_time.elapsed().as_micros();
+            
+            assert!(result.unwrap() == SIZE);
+            
+            println!("RTT: {}, latency: {}", ts, ts / 2);
+        }
     });
 }
